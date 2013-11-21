@@ -1,0 +1,18 @@
+// Fractal definition of the Koch curve
+
+def koch fractal
+    self(0.333)
+    left(60)
+    self(0.333)
+    right(120)
+    self(0.333)
+    left(60)
+    self(0.333)
+    end
+
+// clear the screen, reset the turtle
+clear() home()
+// step back 100 steps to give room for big curve,  ensure pen is down
+pu() back(100) pd()
+// render gosper curve on line segment 200 steps long
+render[8, 200] koch

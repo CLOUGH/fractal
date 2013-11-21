@@ -1,0 +1,152 @@
+package fractal.syntax;
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
+import fractal.values.FractalValue;
+
+/* Preliminaries to set up and use the scanner.  */
+parser code 	{:
+		FractalLexer lexer;
+		public FractalParser(FractalLexer lexer){
+			super(lexer);
+			this.lexer = lexer;		
+		}
+		public void report_error(String message, Object info){
+			System.err.println(message);
+		}
+		public void syntax_error(Symbol current_token) {
+			System.err.println("There was an error on Line("+
+				this.lexer.getLine() +
+				") \n Syntax error at \"" + 
+				this.lexer.getChar() + "\" ");
+
+			report_error("Syntax error", current_token);
+			
+			System.err.println ("\nLast token read is " + this.lexer.getText());
+
+		}
+		:};
+
+
+init with 	{:
+	  	:};
+
+scan with 	{:
+		
+		try {
+		    return this.lexer.next_token();
+		} catch (java.io.IOException ioe) 
+		{
+		    System.out.println ("Unrecognised token");
+		    System.out.println(ioe.getMessage());
+		    throw ioe;
+		}
+	  :};
+
+/* Terminals (tokens returned by the scanner). */
+
+//Special keywords
+terminal FRACTAL, RENDER, LEVEL,SCALE,SAVE,RESTORE,DEF,SELF,END;
+terminal FORWARD, BACK, RIGHT, PENUP,PENDOWN, HOME, CLEAR, LEFT;
+
+// Special Symbols
+terminal LPAREN, RPAREN, COMMA, RBRACE, LBRACE;
+
+// Arithmetic Operators
+terminal PLUS, MINUS, MUL, DIV, MOD, ATSYM, EXCLAMATION, SEMI;
+
+// Terminals with values
+terminal Integer INTEGER;
+terminal String VARIABLE;
+terminal Double DOUBLE;
+
+/* Non terminals */
+non terminal ASTProgram program;
+non terminal ASTStmtSequence stmtList;
+non terminal ASTStatement stmt;
+non terminal ASTTurtleCmd turtleStmt;
+non terminal ASTDefine definition;
+non terminal ArrayList<ASTStatement> fractalBody;
+
+non terminal ASTFractal fractalStmt;
+non terminal ASTFracExp fractalExp;
+non terminal ASTExp exp;
+non terminal ASTExp term;
+non terminal ASTExp factor;
+non terminal empty;
+
+non terminal ASTSaveStmt saveStmt;
+non terminal ASTRestoreStmt restoreStmt;
+non terminal ASTSetLevel levelStmt;
+non terminal ASTSetScale setScaleStmt;
+non terminal ASTSelf selfStmt;
+
+non terminal ASTTCmdBack backStmt;
+non terminal ASTTCmdClear clearStmt;
+non terminal ASTTCmdHome homeStmt;
+non terminal ASTTCmdLeft leftStmt;
+non terminal ASTTCmdPenDown pendownStmt;
+non terminal ASTTCmdPenUp penupStmt;
+non terminal ASTTCmdRight rightStmt;
+non terminal ASTTCmdForward forwardStmt;
+
+
+/* Grammar rules */
+
+program 	::= 	stmtList:sl			{: RESULT = new ASTProgram(sl); :};
+stmtList 	::= 	stmtList:lst stmt:s 		{: lst.add(s); RESULT = lst; :} |
+	     		stmt:s 				{:RESULT = new ASTStmtSequence(s); :};
+stmt 		::=	turtleStmt:ts 			{: RESULT = ts; :}|
+			definition:d 			{: RESULT = d; :}|
+			fractalStmt:f 			{: RESULT = f; :}|
+			saveStmt:s  			{: RESULT = s; :}|
+			restoreStmt:r			{: RESULT = r; :}|
+			levelStmt:l 			{: RESULT = l; :}|
+			setScaleStmt:ss 		{: RESULT = ss; :};
+
+saveStmt	::= 	SAVE				{: RESULT = new ASTSaveStmt(); :};
+restoreStmt	::=	RESTORE				{: RESULT = new ASTRestoreStmt(); :};
+levelStmt	::=	LEVEL exp:e			{: RESULT = new ASTSetLevel(e); :};
+setScaleStmt	::=	SCALE exp:e			{: RESULT = new ASTSetScale(e); :};
+
+/*Turtle Command */
+turtleStmt	::=	forwardStmt:f 			{: RESULT = f; :}|
+			backStmt:b			{: RESULT = b; :}|
+			clearStmt:c			{: RESULT = c; :}|
+			homeStmt:h			{: RESULT = h; :}|
+			pendownStmt:pd			{: RESULT = pd; :}|
+			penupStmt:pu			{: RESULT = pu; :}|
+			leftStmt:l			{: RESULT = l; :}|
+			rightStmt:r			{: RESULT = r; :};	
+forwardStmt	::= 	FORWARD LPAREN exp:e RPAREN 	{: RESULT= new ASTTCmdForward(e); :};
+backStmt	::= 	BACK LPAREN exp:e RPAREN	{: RESULT= new ASTTCmdBack(e); :};
+leftStmt	::= 	LEFT LPAREN exp:e RPAREN	{: RESULT= new ASTTCmdLeft(e); :};
+rightStmt	::= 	RIGHT LPAREN exp:e RPAREN	{: RESULT= new ASTTCmdRight(e); :};
+clearStmt	::=	CLEAR LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdClear(); :};
+homeStmt	::=	HOME LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdHome(); :};
+pendownStmt	::=	PENDOWN LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdPenDown(); :};
+penupStmt	::=	PENUP LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdPenUp(); :};
+
+definition	::= 	DEF VARIABLE:var fractalStmt:f 	{: RESULT= new ASTDefine(var,f); :};
+fractalStmt	::=	FRACTAL fractalBody:f END	{: RESULT = new ASTFractal(f); :};
+fractalBody	::= 	fractalExp:f fractalBody:b 	{: b.add(f);RESULT = b; :} |
+             		fractalExp:f 			{: ArrayList<ASTStatement> body = new ArrayList<ASTStatement>();
+                 					body.add(f);RESULT = body;:};
+fractalExp 	::= 	selfStmt|stmt;
+selfStmt	::=	SELF LPAREN exp:e RPAREN	{: RESULT= new ASTSelf(e); :};
+exp		::=	exp:e PLUS term:t 		{: RESULT= new ASTExpAdd(e, t); :} |
+			exp:e MINUS term:t 		{: RESULT = new ASTExpSub(e, t); :} |
+			term:t				{: RESULT = t; :};
+term		::=	term:t MUL factor:f 		{: RESULT = new ASTExpMul(t,f); :} |
+			term:t DIV factor:f		{: RESULT = new ASTExpDiv(t,f); :} |
+			term:t MOD factor:f		{: RESULT = new ASTExpMod(t,f); :} |
+			factor:f			{: RESULT = f; :};
+
+factor		::= 	INTEGER:i		{: RESULT = new ASTExpLit(FractalValue.make(i)); :} |
+			DOUBLE:d		{: RESULT = new ASTExpLit(FractalValue.make(d)); :} |
+			LPAREN exp:e RPAREN 	{: RESULT = e; :};
+			
+
+empty ::= ;
++

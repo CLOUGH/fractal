@@ -1,0 +1,16 @@
+// Fractal definition of the Gosper C curve
+
+def gosper fractal
+    left(45)
+    self(0.707)
+    right(90)
+    self(0.707)
+    left(45)
+    end
+
+// clear the screen, reset the turtle, ensure pen is down
+clear() home() pd()
+// step back 100 steps to give room for big curve
+back(100)
+// render gosper curve on line segment 200 steps long
+render[8, 200] gosper

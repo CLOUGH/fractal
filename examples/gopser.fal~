@@ -1,0 +1,13 @@
+// Fractal definition of the Gosper C curve
+
+def gosper fractal
+    left(45)
+    self(0.707)
+    right(90)
+    self(0.707)
+    left(45)
+    end
+
+clear() home() pd()
+back(100)
+render[8, 200] gosper
