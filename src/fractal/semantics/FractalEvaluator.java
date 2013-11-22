@@ -101,8 +101,11 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 
     @Override
     public FractalValue visitASTDefine(ASTDefine form, FractalState state) throws FractalException {
-	System.out.print("->define");
+	System.out.print("->defineStmt");
 	
+	Environment current_env = state.getEnvironment();
+	String name = form.getVar() ;
+	FractalValue value = form.getValueExp().visit(this, state);
 	
         return FractalValue.NO_VALUE;
     }
@@ -124,7 +127,18 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 
     @Override
     public FractalValue visitASTFractal(ASTFractal form, FractalState state) throws FractalException {
-        throw new UnsupportedOperationException("Not supported yet.11"); //To change body of generated methods, choose Tools | Templates.
+        System.out.print("->fractalStmt\n");
+
+	ArrayList<ASTStatement> fractal_body = form.getBody();
+	Iterator i = fractal_body.iterator();
+	ASTStatement s;
+	while(i.hasNext()) {
+		System.out.print("\t->Stmt");
+		s = (ASTStatement)i.next();
+		s.visit(this, state);
+		System.out.println("");
+	}     
+      return FractalValue.NO_VALUE;
     }
 
     @Override

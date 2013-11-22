@@ -67,10 +67,12 @@ non terminal ASTStmtSequence stmtList;
 non terminal ASTStatement stmt;
 non terminal ASTTurtleCmd turtleStmt;
 non terminal ASTDefine definition;
+non terminal ASTFracSequence fractalStmtList;
 non terminal ArrayList<ASTStatement> fractalBody;
 
 non terminal ASTFractal fractalStmt;
 non terminal ASTFracExp fractalExp;
+non terminal ASTStmt fractalExp1;
 non terminal ASTExp exp;
 non terminal ASTExp term;
 non terminal ASTExp factor;
@@ -81,6 +83,7 @@ non terminal ASTRestoreStmt restoreStmt;
 non terminal ASTSetLevel levelStmt;
 non terminal ASTSetScale setScaleStmt;
 non terminal ASTSelf selfStmt;
+non terminal ASTRender renderStmt;
 
 non terminal ASTTCmdBack backStmt;
 non terminal ASTTCmdClear clearStmt;
@@ -91,6 +94,10 @@ non terminal ASTTCmdPenUp penupStmt;
 non terminal ASTTCmdRight rightStmt;
 non terminal ASTTCmdForward forwardStmt;
 
+non terminal ASTExpVar expVarStmt;
+non terminal ASTFracVar fractalVar;
+
+
 
 /* Grammar rules */
 
@@ -98,12 +105,15 @@ program 	::= 	stmtList:sl			{: RESULT = new ASTProgram(sl); :};
 stmtList 	::= 	stmtList:lst stmt:s 		{: lst.add(s); RESULT = lst; :} |
 	     		stmt:s 				{:RESULT = new ASTStmtSequence(s); :};
 stmt 		::=	turtleStmt:ts 			{: RESULT = ts; :}|
-			definition:d 			{: RESULT = d; :}|
-			fractalStmt:f 			{: RESULT = f; :}|
+			definition:d 			{: RESULT = d; :}|			
 			saveStmt:s  			{: RESULT = s; :}|
 			restoreStmt:r			{: RESULT = r; :}|
 			levelStmt:l 			{: RESULT = l; :}|
-			setScaleStmt:ss 		{: RESULT = ss; :};
+			setScaleStmt:ss 		{: RESULT = ss; :}|
+			renderStmt:r			{: RESULT = r; :};
+renderStmt 	::= 	RENDER fractalVar:var		{: RESULT = new ASTRender(var); :}|
+			RENDER LBRACE exp:level COMMA exp:scale RBRACE fractalVar:fractal 
+							{: RESULT = new ASTRender(level,scale,fractal); :};
 
 saveStmt	::= 	SAVE				{: RESULT = new ASTSaveStmt(); :};
 restoreStmt	::=	RESTORE				{: RESULT = new ASTRestoreStmt(); :};
@@ -118,7 +128,7 @@ turtleStmt	::=	forwardStmt:f 			{: RESULT = f; :}|
 			pendownStmt:pd			{: RESULT = pd; :}|
 			penupStmt:pu			{: RESULT = pu; :}|
 			leftStmt:l			{: RESULT = l; :}|
-			rightStmt:r			{: RESULT = r; :};	
+			rightStmt:r			{: RESULT = r; :};
 forwardStmt	::= 	FORWARD LPAREN exp:e RPAREN 	{: RESULT= new ASTTCmdForward(e); :};
 backStmt	::= 	BACK LPAREN exp:e RPAREN	{: RESULT= new ASTTCmdBack(e); :};
 leftStmt	::= 	LEFT LPAREN exp:e RPAREN	{: RESULT= new ASTTCmdLeft(e); :};
@@ -128,12 +138,24 @@ homeStmt	::=	HOME LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdHome(); :};
 pendownStmt	::=	PENDOWN LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdPenDown(); :};
 penupStmt	::=	PENUP LPAREN empty:e RPAREN	{: RESULT= new ASTTCmdPenUp(); :};
 
-definition	::= 	DEF VARIABLE:var fractalStmt:f 	{: RESULT= new ASTDefine(var,f); :};
-fractalStmt	::=	FRACTAL fractalBody:f END	{: RESULT = new ASTFractal(f); :};
-fractalBody	::= 	fractalExp:f fractalBody:b 	{: b.add(f);RESULT = b; :} |
-             		fractalExp:f 			{: ArrayList<ASTStatement> body = new ArrayList<ASTStatement>();
-                 					body.add(f);RESULT = body;:};
-fractalExp 	::= 	selfStmt|stmt;
+definition	::= 	DEF VARIABLE:var fractalExp:f 	{: RESULT= new ASTDefine(var,f); :};
+fractalExp 	::=	fractalStmt:f			{: RESULT= f; :}|
+			fractalVar:v			{: RESULT = v; :};
+fractalStmt	::=	FRACTAL fractalBody:b END	{: RESULT = new ASTFractal(b); :};
+fractalBody	::=	stmt:s fractalBody:b 		{: b.add(s);RESULT = b; :} |
+             		stmt:s 				{: ArrayList<ASTStatement> body=new ArrayList<ASTStatement>();
+							body.add(s);RESULT = body;:}|
+			selfStmt:s fractalBody:b 	{: b.add(s);RESULT = b; :} |
+             		selfStmt:s 			{: ArrayList<ASTStatement> body=new ArrayList<ASTStatement>();
+							body.add(s);RESULT = body;:};
+fractalVar 	::= 	VARIABLE:v			{: RESULT = new ASTFracVar(v); :};
+
+/*fractalStmt	::=		{: RESULT = new ASTFractal(f); :};*/
+/*fractalBody	::= 	fractalExp:f fractalBody:b 	{: b.add(f);RESULT = b; :} |
+             		fractalExp:f 			{: ArrayList<ASTStatement> body = new ArrayList<ASTStatement>(); body.add(f);RESULT = body;:};*/
+/*fractalExp 	::= 	selfStmt|stmt; */
+
+							
 selfStmt	::=	SELF LPAREN exp:e RPAREN	{: RESULT= new ASTSelf(e); :};
 exp		::=	exp:e PLUS term:t 		{: RESULT= new ASTExpAdd(e, t); :} |
 			exp:e MINUS term:t 		{: RESULT = new ASTExpSub(e, t); :} |
@@ -149,4 +171,4 @@ factor		::= 	INTEGER:i		{: RESULT = new ASTExpLit(FractalValue.make(i)); :} |
 			
 
 empty ::= ;
-+
+
