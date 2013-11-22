@@ -17,6 +17,7 @@ import fractal.syntax.ASTFracCompose;
 import fractal.syntax.ASTFracSequence;
 import fractal.syntax.ASTFracVar;
 import fractal.syntax.ASTFractal;
+import fractal.syntax.ASTFracExp;
 import fractal.syntax.ASTRender;
 import fractal.syntax.ASTRestoreStmt;
 import fractal.syntax.ASTSaveStmt;
@@ -34,6 +35,7 @@ import fractal.syntax.ASTTCmdPenUp;
 import fractal.syntax.ASTTCmdRight;
 import fractal.sys.FractalException;
 import fractal.values.FractalValue;
+import fractal.values.Fractal;
 import fractal.syntax.ASTStatement;
 import fractal.syntax.ASTExp;
 /**
@@ -76,7 +78,46 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 
     @Override
     public FractalValue visitASTRender(ASTRender form, FractalState state) throws FractalException {
-        throw new UnsupportedOperationException("Not supported yet.4"); //To change body of generated methods, choose Tools | Templates.
+	System.out.print("->render");
+	int level, prev_level;
+	double scale, prev_scale;
+	ASTFracExp fractalExp = form.getFractal();
+
+	if(form.getLevel()==null || form.getScale()!=null) {
+		level = 9;
+		scale = 100;
+	}
+	else{
+		FractalValue scaleValue =  form.getScale().visit(this,state);
+		FractalValue levelValue = form.getLevel().visit(this, state);
+		level = levelValue.intValue();
+		scale = scaleValue.realValue();
+	}	
+	System.out.println("\n\tscaleValue: "+scale+ " \n\tlevel: "+level);
+	
+	prev_level = state.getDefaultLevel();
+	prev_scale = state.getDefaultScale();
+
+	state.setDefaultLevel(level);
+	state.setDefaultScale(scale);
+	
+	ASTStatement s;
+	Fractal fractal = fractalExp.visit(this, state).fractalValue();
+	ArrayList<ASTStatement> fractal_body = fractal.getBody().getSeq();
+	Iterator i = fractal_body.iterator();
+	ASTStatement s;
+	while(i.hasNext()) {
+		System.out.print("\t->Stmt");
+		s = (ASTStatement)i.next();
+		s.visit(this, state);
+		System.out.println("");
+	} 
+	
+	state.setDefaultLevel(prev_level);
+	state.setDefaultScale(prev_scale);
+
+	
+	return FractalValue.NO_VALUE;
     }
 
     @Override
@@ -106,8 +147,9 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 	Environment current_env = state.getEnvironment();
 	String name = form.getVar() ;
 	FractalValue value = form.getValueExp().visit(this, state);
-	current_env.put(value,form.getValueExp());
-        return FractalValue.NO_VALUE;
+	current_env.put(name,value);
+	
+        return FractalValue.NO_VALUE;	
     }
 
     @Override
@@ -122,23 +164,17 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 
     @Override
     public FractalValue visitASTFracVar(ASTFracVar form, FractalState state) throws FractalException {
-        throw new UnsupportedOperationException("Not supported yet.10"); //To change body of generated methods, choose Tools | Templates.
+        System.out.print("->fracVar");
+	Environment env = state.getEnvironment();
+	
+	return env.get(form.getVar());
     }
 
     @Override
     public FractalValue visitASTFractal(ASTFractal form, FractalState state) throws FractalException {
         System.out.print("->fractalStmt\n");
-
 	ArrayList<ASTStatement> fractal_body = form.getBody();
-	Iterator i = fractal_body.iterator();
-	ASTStatement s;
-	while(i.hasNext()) {
-		System.out.print("\t->Stmt");
-		s = (ASTStatement)i.next();
-		s.visit(this, state);
-		System.out.println("");
-	}     
-      return FractalValue.NO_VALUE;
+	return new Fractal(fractal_body);
     }
 
     @Override
