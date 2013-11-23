@@ -43,6 +43,7 @@ import fractal.syntax.ASTExp;
  * @author newts
  */
 public class FractalEvaluator extends AbstractFractalEvaluator {
+	private static ASTFracExp fractalExp;
 
     @Override
     public FractalValue visitASTStmtSequence(ASTStmtSequence seq, FractalState state) throws FractalException {
@@ -81,9 +82,9 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 	System.out.print("->render");
 	int level, prev_level;
 	double scale, prev_scale;
-	ASTFracExp fractalExp = form.getFractal();
+	fractalExp = form.getFractal();
 
-	if(form.getLevel()==null || form.getScale()!=null) {
+	if(form.getLevel()==null || form.getScale()==null) {
 		level = 9;
 		scale = 100;
 	}
@@ -93,16 +94,16 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 		level = levelValue.intValue();
 		scale = scaleValue.realValue();
 	}	
-	System.out.println("\n\tscaleValue: "+scale+ " \n\tlevel: "+level);
-	
+
 	prev_level = state.getDefaultLevel();
 	prev_scale = state.getDefaultScale();
 
 	state.setDefaultLevel(level);
 	state.setDefaultScale(scale);
 	
-	ASTStatement s;
+	
 	Fractal fractal = fractalExp.visit(this, state).fractalValue();
+	System.out.println("\n\tscaleValue: "+scale+ " \n\tlevel: "+level);
 	ArrayList<ASTStatement> fractal_body = fractal.getBody().getSeq();
 	Iterator i = fractal_body.iterator();
 	ASTStatement s;
@@ -179,7 +180,24 @@ public class FractalEvaluator extends AbstractFractalEvaluator {
 
     @Override
     public FractalValue visitASTSelf(ASTSelf form, FractalState state) throws FractalException {
-        throw new UnsupportedOperationException("Not supported yet.12"); //To change body of generated methods, choose Tools | Templates.
+       	System.out.print("->selfStmt");
+	int level = state.getDefaultLevel();
+	double scale = state.getDefaultScale();
+	double length = form.getLength().visit(this, state).realValue();
+	
+	if(level == 0){
+		ASTTCmdForward forward = new ASTTCmdForward(form.getLength());
+		forward.visit(this, state);
+	}
+	else {
+		ASTRender render = new ASTRender(new ASTExpLit(FractalValue.make(level-1)),
+					new ASTExpLit(FractalValue.make(scale * length)),
+					fractalExp);
+		render.visit(this, state);
+	}
+	
+	
+	return FractalValue.NO_VALUE;
     }
 
     @Override
